@@ -237,9 +237,14 @@ function HistoryView({history}){
 }
 function App(){
   const[view,setView]=useState("home");
-  const[orders,setOrders]=useState([]);
-  const[history,setHistory]=useState([]);
-  const[seq,setSeq]=useState(1);
+  const[orders,setOrders]=useState(()=>JSON.parse(localStorage.getItem("orders")||"[]"));
+  const[history,setHistory]=useState(()=>JSON.parse(localStorage.getItem("history")||"[]"));
+  const[seq,setSeq]=useState(()=>JSON.parse(localStorage.getItem("seq")||"1"));
+
+  React.useEffect(()=>{localStorage.setItem("orders",JSON.stringify(orders));},[orders]);
+  React.useEffect(()=>{localStorage.setItem("history",JSON.stringify(history));},[history]);
+  React.useEffect(()=>{localStorage.setItem("seq",JSON.stringify(seq));},[seq]);
+
   const submit=(picked,req)=>{const now=new Date().toLocaleString("ko-KR");const o=picked.map(item=>({...item,orderId:`ORD-${String(seq).padStart(4,"0")}-${item.id}`,requester:req,status:"waiting",submittedAt:now}));setOrders(p=>[...o,...p]);setHistory(p=>[...o,...p]);setSeq(n=>n+1);setView("manager");};
   const upSt=(id,next)=>{setOrders(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));setHistory(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));};
   const upItem=(id,data)=>{setOrders(p=>p.map(o=>o.orderId===id?{...o,...data}:o));setHistory(p=>p.map(o=>o.orderId===id?{...o,...data}:o));};
