@@ -99,8 +99,8 @@ function HomeView({onEnter,waitingCount}){
     </div>
     <div style={{width:"100%",maxWidth:340,display:"flex",flexDirection:"column",gap:14}}>
       <button onClick={()=>onEnter("staff")} style={{padding:"22px 0",borderRadius:16,background:C.accent,color:C.surface,fontSize:17,fontWeight:700,border:"none",cursor:"pointer",fontFamily:"inherit"}}>발주 요청</button>
-      <button onClick={()=>onEnter("manager")} style={{padding:"22px 0",borderRadius:16,background:"transparent",color:C.text,fontSize:17,fontWeight:600,border:`1.5px solid ${C.border2}`,cursor:"pointer",position:"relative",fontFamily:"inherit"}}>발주 관리{waitingCount>0&&<span style={{position:"absolute",top:10,right:18,background:C.danger,color:"#fff",borderRadius:12,fontSize:12,fontWeight:700,padding:"2px 8px"}}>{waitingCount}건</span>}</button>
-      <button onClick={()=>onEnter("history")} style={{padding:"17px 0",borderRadius:16,background:"transparent",color:C.gold,fontSize:15,fontWeight:600,border:`1px solid ${C.border}`,cursor:"pointer",fontFamily:"inherit"}}>발주 이력</button>
+      <button onClick={()=>onEnter("manager")} style={{padding:"22px 0",borderRadius:16,background:"transparent",color:C.text,fontSize:17,fontWeight:700,border:`1.5px solid ${C.border2}`,cursor:"pointer",position:"relative",fontFamily:"inherit"}}>발주 관리{waitingCount>0&&<span style={{position:"absolute",top:10,right:18,background:C.danger,color:"#fff",borderRadius:12,fontSize:12,fontWeight:700,padding:"2px 8px"}}>{waitingCount}건</span>}</button>
+      <button onClick={()=>onEnter("history")} style={{padding:"22px 0",borderRadius:16,background:"transparent",color:C.gold,fontSize:17,fontWeight:700,border:`1px solid ${C.border}`,cursor:"pointer",fontFamily:"inherit"}}>발주 이력</button>
     </div>
   </div>);
 }
