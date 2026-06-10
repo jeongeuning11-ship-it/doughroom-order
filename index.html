@@ -202,11 +202,27 @@ function ManagerView({orders,onUpdateStatus,onUpdateItem}){
 }
 function HistoryView({history}){
   const[open,setOpen]=useState(null);
-  const cnt={all:history.length,ordered:history.filter(o=>o.status==="ordered"||o.status==="delivered").length,delivered:history.filter(o=>o.status==="delivered").length};
-  const groups=history.reduce((acc,o)=>{const k=o.submittedAt.split(". ").slice(0,3).join(".");if(!acc[k])acc[k]=[];acc[k].push(o);return acc;},{});
+  const now=new Date();
+  const thisMonth=`${now.getFullYear()}. ${now.getMonth()+1}.`;
+
+  const monthlyHistory=history.filter(o=>o.submittedAt.startsWith(thisMonth));
+
+  const cnt={
+  all:monthlyHistory.length,
+  ordered:monthlyHistory.filter(o=>o.status==="ordered"||o.status==="delivered").length,
+  delivered:monthlyHistory.filter(o=>o.status==="delivered").length
+};
+
+const groups=history.reduce((acc,o)=>{
+  const p=o.submittedAt.split(". ");
+  const k=`${p[0]}.${p[1]}`;
+  if(!acc[k])acc[k]=[];
+  acc[k].push(o);
+  return acc;
+},{});
   return(<div>
     <div style={{fontSize:22,fontWeight:700,marginBottom:2}}>발주 이력</div>
-    <div style={{fontSize:13,color:C.dim,marginBottom:20}}>전체 발주 내역 및 통계</div>
+    <div style={{fontSize:13,color:C.dim,marginBottom:20}}>이번 달 발주 통계 / 월별 발주 내역</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:24}}>
       {[["전체",cnt.all,C.text],["발주",cnt.ordered,C.blue],["배송완료",cnt.delivered,C.green]].map(([l,v,col])=>(
         <div key={l} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 8px",textAlign:"center"}}>
