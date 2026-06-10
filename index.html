@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="theme-color" content="#F5F0E8"/>
+  <title>Doughroom 발주관리</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#F5F0E8;-webkit-tap-highlight-color:transparent;}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState}=React;
+const C={bg:"#F5F0E8",surface:"#FDFAF4",surface2:"#EDE8DF",border:"#D8D0C0",border2:"#C8BEA8",accent:"#1A1714",gold:"#9A7F52",text:"#1A1714",dim:"#6B6358",muted:"#A09888",danger:"#C0392B",dangerD:"rgba(192,57,43,0.1)",green:"#2D7A4F",greenD:"rgba(45,122,79,0.1)",blue:"#2C5F8A",blueD:"rgba(44,95,138,0.1)",orange:"#C0622B",kakao:"#FEE500"};
+const CAT={bev:{label:"음료·식자재",emoji:"🧊",color:"#2C5F8A",dim:"rgba(44,95,138,0.12)"},supply:{label:"비품·소모품",emoji:"📦",color:"#9A7F52",dim:"rgba(154,127,82,0.12)"},equip:{label:"기물·집기",emoji:"🔧",color:"#C0622B",dim:"rgba(192,98,43,0.12)"}};
+const STATUS={waiting:{label:"대기중",color:"#9A7F52",dim:"rgba(154,127,82,0.12)",next:"ordered",nextLabel:"발주하기"},ordered:{label:"발주중",color:"#2C5F8A",dim:"rgba(44,95,138,0.12)",next:"delivered",nextLabel:"배송완료"},delivered:{label:"배송완료",color:"#2D7A4F",dim:"rgba(45,122,79,0.12)",next:null,nextLabel:null}};
+const ITEMS=[
+  {id:1,name:"에비앙 330ml",cat:"bev",note:"6병 단위 박스",naverUrl:"",coupangUrl:""},
+  {id:2,name:"탄산수 (페리에/산펠레그리노)",cat:"bev",note:"서비스 기본 제공",naverUrl:"",coupangUrl:""},
+  {id:3,name:"오렌지 주스",cat:"bev",note:"냉장 보관",naverUrl:"",coupangUrl:""},
+  {id:4,name:"우유 (전지/저지방)",cat:"bev",note:"커피용",naverUrl:"",coupangUrl:""},
+  {id:5,name:"드립 커피 원두",cat:"bev",note:"현재 사용 블렌드",naverUrl:"",coupangUrl:""},
+  {id:6,name:"티백 (녹차/허브류)",cat:"bev",note:"웰컴티 서비스용",naverUrl:"",coupangUrl:""},
+  {id:7,name:"소금 (천일염)",cat:"bev",note:"조리용",naverUrl:"",coupangUrl:""},
+  {id:8,name:"버터",cat:"bev",note:"냉장",naverUrl:"",coupangUrl:""},
+  {id:9,name:"화장지 (업소용)",cat:"supply",note:"화장실 비치",naverUrl:"",coupangUrl:""},
+  {id:10,name:"핸드타올 페이퍼",cat:"supply",note:"주방·화장실",naverUrl:"",coupangUrl:""},
+  {id:11,name:"주방세제",cat:"supply",note:"식기 세척용",naverUrl:"",coupangUrl:""},
+  {id:12,name:"비닐장갑",cat:"supply",note:"주방 위생용",naverUrl:"",coupangUrl:""},
+  {id:13,name:"랩·호일",cat:"supply",note:"주방 보관용",naverUrl:"",coupangUrl:""},
+  {id:14,name:"쓰레기봉투 (대)",cat:"supply",note:"분리수거 포함",naverUrl:"",coupangUrl:""},
+  {id:15,name:"살균 소독제",cat:"supply",note:"식품 접촉면용",naverUrl:"",coupangUrl:""},
+  {id:16,name:"영수증 용지 (POS)",cat:"supply",note:"80mm 롤",naverUrl:"",coupangUrl:""},
+  {id:17,name:"와인잔 (레드용)",cat:"equip",note:"리델/깨짐 확인",naverUrl:"",coupangUrl:""},
+  {id:18,name:"와인잔 (화이트용)",cat:"equip",note:"리델/깨짐 확인",naverUrl:"",coupangUrl:""},
+  {id:19,name:"워터글라스",cat:"equip",note:"서비스 기본",naverUrl:"",coupangUrl:""},
+  {id:20,name:"디너 포크",cat:"equip",note:"세트 수량 확인",naverUrl:"",coupangUrl:""},
+  {id:21,name:"디너 나이프",cat:"equip",note:"세트 수량 확인",naverUrl:"",coupangUrl:""},
+  {id:22,name:"스푼 (디저트)",cat:"equip",note:"",naverUrl:"",coupangUrl:""},
+  {id:23,name:"서빙 트레이 (소)",cat:"equip",note:"",naverUrl:"",coupangUrl:""},
+  {id:24,name:"캔들 홀더",cat:"equip",note:"테이블 세팅용",naverUrl:"",coupangUrl:""},
+];
+const inp={width:"100%",padding:"13px 14px",background:"#FDFAF4",border:"1px solid #D8D0C0",borderRadius:10,color:"#1A1714",fontSize:16,outline:"none",fontFamily:"inherit"};
+function Modal({onClose,children}){return(<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(26,23,20,0.55)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}}><div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:540,background:C.surface,borderRadius:"20px 20px 0 0",padding:"20px 20px 44px",borderTop:`1px solid ${C.border}`,maxHeight:"88vh",overflowY:"auto"}}>{children}</div></div>);}
+function Tag({status}){const s=STATUS[status];return <span style={{fontSize:11,padding:"3px 10px",borderRadius:20,background:s.dim,color:s.color,fontWeight:700,whiteSpace:"nowrap"}}>{s.label}</span>;}
+function Pill({label,active,color,onClick}){return(<button onClick={onClick} style={{padding:"7px 15px",borderRadius:20,fontSize:13,fontWeight:600,border:`1px solid ${active?color:C.border}`,background:active?"rgba(0,0,0,0.06)":"transparent",color:active?color:C.dim,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>);}
+function ItemModal({item,onSave,onDelete,onClose}){
+  const isEdit=!!item;
+  const[name,setName]=useState(item?.name||"");
+  const[cat,setCat]=useState(item?.cat||"bev");
+  const[note,setNote]=useState(item?.note||"");
+  const[nUrl,setNUrl]=useState(item?.naverUrl||"");
+  const[cUrl,setCUrl]=useState(item?.coupangUrl||"");
+  const lbl=(t)=><div style={{fontSize:12,color:C.dim,marginBottom:6,fontWeight:600}}>{t}</div>;
+  return(<Modal onClose={onClose}>
+    <div style={{fontSize:18,fontWeight:700,marginBottom:20}}>{isEdit?"품목 수정":"품목 추가"}</div>
+    <div style={{marginBottom:14}}>{lbl("품목명")}<input style={inp} value={name} onChange={e=>setName(e.target.value)} placeholder="예: 탄산수 500ml"/></div>
+    <div style={{marginBottom:14}}>{lbl("카테고리")}<select style={{...inp,appearance:"none"}} value={cat} onChange={e=>setCat(e.target.value)}><option value="bev">🧊 음료·식자재</option><option value="supply">📦 비품·소모품</option><option value="equip">🔧 기물·집기</option></select></div>
+    <div style={{marginBottom:14}}>{lbl("비고")}<input style={inp} value={note} onChange={e=>setNote(e.target.value)} placeholder="예: 냉장 보관"/></div>
+    <div style={{height:1,background:C.border,margin:"16px 0"}}/>
+    <div style={{fontSize:12,color:C.gold,fontWeight:700,marginBottom:12}}>🔗 구매 링크 (비워두면 검색 자동 연결)</div>
+    <div style={{marginBottom:14}}>{lbl("네이버 링크")}<input style={inp} value={nUrl} onChange={e=>setNUrl(e.target.value)} placeholder="https://smartstore.naver.com/..."/></div>
+    <div style={{marginBottom:22}}>{lbl("쿠팡 링크")}<input style={inp} value={cUrl} onChange={e=>setCUrl(e.target.value)} placeholder="https://www.coupang.com/vp/products/..."/></div>
+    {isEdit&&onDelete&&<button onClick={()=>{onDelete(item.id);onClose();}} style={{width:"100%",padding:14,borderRadius:12,border:`1px solid ${C.danger}`,background:C.dangerD,color:C.danger,fontSize:15,fontWeight:600,cursor:"pointer",marginBottom:10,fontFamily:"inherit"}}>삭제</button>}
+    <div style={{display:"flex",gap:10}}>
+      <button onClick={onClose} style={{flex:1,padding:14,borderRadius:12,border:`1px solid ${C.border}`,background:"transparent",color:C.dim,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+      <button onClick={()=>{if(name.trim()){onSave({name:name.trim(),cat,note:note.trim(),naverUrl:nUrl.trim(),coupangUrl:cUrl.trim()});onClose();}}} style={{flex:2,padding:14,borderRadius:12,border:"none",background:C.accent,color:C.surface,fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{isEdit?"저장":"추가"}</button>
+    </div>
+  </Modal>);
+}
+function KakaoModal({items,requester,onClose}){
+  const[copied,setCopied]=useState(false);
+  const now=new Date().toLocaleString("ko-KR");
+  const msg=`📦 [두룸 발주 요청]\n요청자: ${requester}\n일시: ${now}\n\n${items.map((i,idx)=>`${idx+1}. ${CAT[i.cat].emoji} ${i.name}${i.note?" ("+i.note+")":""}`).join("\n")}\n\n총 ${items.length}개 품목\n확인 후 발주 부탁드립니다.`;
+  const copy=async()=>{try{await navigator.clipboard.writeText(msg);}catch{const t=document.createElement("textarea");t.value=msg;document.body.appendChild(t);t.select();document.execCommand("copy");document.body.removeChild(t);}setCopied(true);setTimeout(()=>setCopied(false),2500);};
+  return(<Modal onClose={onClose}>
+    <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>✅ 발주 요청 완료!</div>
+    <div style={{fontSize:14,color:C.dim,marginBottom:20}}>내용을 복사해서 카카오톡 단톡방에 붙여넣으세요.</div>
+    <div style={{background:C.surface2,borderRadius:14,padding:"16px",marginBottom:16,border:`1px solid ${C.border}`}}>
+      <pre style={{fontSize:13,color:C.text,lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{msg}</pre>
+    </div>
+    <div style={{display:"flex",gap:10,marginBottom:10}}>
+      <button onClick={copy} style={{flex:1,padding:15,borderRadius:12,border:`1px solid ${C.border}`,background:copied?C.greenD:"transparent",color:copied?C.green:C.dim,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{copied?"✅ 복사됨!":"📋 내용 복사"}</button>
+      <button onClick={()=>window.open("kakaotalk://","_blank")} style={{flex:1,padding:15,borderRadius:12,border:"none",background:C.kakao,color:"#3A1D1D",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>💬 카톡 열기</button>
+    </div>
+    <button onClick={onClose} style={{width:"100%",padding:14,borderRadius:12,border:`1px solid ${C.border}`,background:"transparent",color:C.dim,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>닫기</button>
+  </Modal>);
+}
+function HomeView({onEnter,waitingCount}){
+  return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"90vh",padding:"0 28px"}}>
+    <div style={{textAlign:"center",marginBottom:48}}>
+      <div style={{fontSize:11,letterSpacing:"0.2em",color:C.muted,marginBottom:12}}>DOUGHROOM GWANGHWAMUN</div>
+      <div style={{fontSize:36,fontWeight:800,letterSpacing:"-0.03em",color:C.text,lineHeight:1.1}}>발주<br/>관리</div>
+      <div style={{width:32,height:2,background:C.gold,margin:"20px auto 0"}}/>
+    </div>
+    <div style={{width:"100%",maxWidth:340,display:"flex",flexDirection:"column",gap:14}}>
+      <button onClick={()=>onEnter("staff")} style={{padding:"22px 0",borderRadius:16,background:C.accent,color:C.surface,fontSize:17,fontWeight:700,border:"none",cursor:"pointer",fontFamily:"inherit"}}>직원으로 입장</button>
+      <button onClick={()=>onEnter("manager")} style={{padding:"22px 0",borderRadius:16,background:"transparent",color:C.text,fontSize:17,fontWeight:600,border:`1.5px solid ${C.border2}`,cursor:"pointer",position:"relative",fontFamily:"inherit"}}>직급자로 입장{waitingCount>0&&<span style={{position:"absolute",top:10,right:18,background:C.danger,color:"#fff",borderRadius:12,fontSize:12,fontWeight:700,padding:"2px 8px"}}>{waitingCount}건</span>}</button>
+      <button onClick={()=>onEnter("history")} style={{padding:"17px 0",borderRadius:16,background:"transparent",color:C.gold,fontSize:15,fontWeight:600,border:`1px solid ${C.border}`,cursor:"pointer",fontFamily:"inherit"}}>📋 발주 이력</button>
+    </div>
+  </div>);
+}
+function StaffView({items:init,onSubmit}){
+  const[list,setList]=useState(init);
+  const[checked,setChecked]=useState({});
+  const[req,setReq]=useState("");
+  const[fCat,setFCat]=useState("all");
+  const[editMode,setEditMode]=useState(false);
+  const[modal,setModal]=useState(null);
+  const[kakao,setKakao]=useState(null);
+  const[nid,setNid]=useState(init.length+1);
+  const cnt=Object.values(checked).filter(Boolean).length;
+  const filtered=fCat==="all"?list:list.filter(i=>i.cat===fCat);
+  const can=cnt>0&&req.trim().length>0;
+  const save=(data)=>{if(modal==="add"){setList(p=>[...p,{id:nid,...data}]);setNid(n=>n+1);}else{setList(p=>p.map(i=>i.id===modal.id?{...i,...data}:i));}};
+  const del=(id)=>{setList(p=>p.filter(i=>i.id!==id));setChecked(p=>{const n={...p};delete n[id];return n;});};
+  const submit=()=>{if(!can)return;const picked=list.filter(i=>checked[i.id]);onSubmit(picked,req.trim());setKakao(picked);setChecked({});};
+  return(<div style={{paddingBottom:110}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div><div style={{fontSize:22,fontWeight:700}}>{editMode?"✏️ 품목 편집":"재고 체크"}</div><div style={{fontSize:13,color:C.dim,marginTop:3}}>{editMode?"탭해서 수정·삭제":"부족한 항목을 탭하세요"}</div></div>
+      <button onClick={()=>setEditMode(e=>!e)} style={{padding:"9px 18px",borderRadius:10,border:`1px solid ${editMode?C.gold:C.border}`,background:editMode?"rgba(154,127,82,0.1)":"transparent",color:editMode?C.gold:C.dim,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{editMode?"완료":"편집"}</button>
+    </div>
+    {!editMode&&<div style={{marginBottom:18}}><div style={{fontSize:13,color:C.dim,fontWeight:600,marginBottom:7}}>요청자 이름</div><input style={inp} value={req} onChange={e=>setReq(e.target.value)} placeholder="이름을 입력하세요"/></div>}
+    <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:16,scrollbarWidth:"none"}}>
+      {[["all","전체",C.accent],["bev","🧊 음료",C.blue],["supply","📦 비품",C.gold],["equip","🔧 기물",C.orange]].map(([k,l,col])=><Pill key={k} label={l} active={fCat===k} color={col} onClick={()=>setFCat(k)}/>)}
+    </div>
+    {filtered.map(item=>(
+      <div key={item.id} onClick={()=>editMode?setModal(item):(setChecked(p=>({...p,[item.id]:!p[item.id]})))} style={{display:"flex",alignItems:"center",gap:13,background:!editMode&&checked[item.id]?C.dangerD:C.surface,border:`1px solid ${!editMode&&checked[item.id]?C.danger:C.border}`,borderRadius:14,padding:"15px 16px",marginBottom:9,cursor:"pointer",WebkitTapHighlightColor:"transparent",userSelect:"none"}}>
+        {editMode?<span style={{fontSize:18}}>✏️</span>:(
+          <div style={{width:24,height:24,borderRadius:7,flexShrink:0,border:`1.5px solid ${checked[item.id]?C.danger:C.border2}`,background:checked[item.id]?C.danger:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {checked[item.id]&&<svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5L5 9L12 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
+        )}
+        <div style={{width:8,height:8,borderRadius:"50%",background:CAT[item.cat].color,flexShrink:0}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:600,fontSize:15,color:!editMode&&checked[item.id]?C.danger:C.text}}>{item.name}</div>
+          <div style={{fontSize:12,color:C.muted,marginTop:3}}>{CAT[item.cat].label}{item.note?" · "+item.note:""}</div>
+        </div>
+        {!editMode&&checked[item.id]&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:C.dangerD,color:C.danger,fontWeight:700,flexShrink:0}}>부족</span>}
+        {editMode&&<span style={{color:C.muted,fontSize:22}}>›</span>}
+      </div>
+    ))}
+    <button onClick={()=>setModal("add")} style={{width:"100%",padding:15,borderRadius:14,border:`1.5px dashed ${C.border2}`,background:"transparent",color:C.muted,fontSize:15,cursor:"pointer",marginTop:6,fontFamily:"inherit"}}>+ 품목 추가</button>
+    {!editMode&&<div style={{position:"fixed",bottom:0,left:0,right:0,padding:"16px 20px 32px",background:C.surface,borderTop:`1px solid ${C.border}`,zIndex:50}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:540,margin:"0 auto"}}>
+        <div><span style={{color:C.danger,fontSize:22,fontWeight:800}}>{cnt}</span><span style={{fontSize:13,color:C.dim}}> 개 선택</span></div>
+        <button disabled={!can} onClick={submit} style={{padding:"14px 30px",borderRadius:14,border:"none",background:can?C.accent:C.border2,color:can?C.surface:C.muted,fontWeight:700,fontSize:16,cursor:can?"pointer":"not-allowed",fontFamily:"inherit"}}>발주 요청 제출</button>
+      </div>
+    </div>}
+    {modal&&<ItemModal item={modal==="add"?null:modal} onSave={save} onDelete={del} onClose={()=>setModal(null)}/>}
+    {kakao&&<KakaoModal items={kakao} requester={req} onClose={()=>setKakao(null)}/>}
+  </div>);
+}
+function ManagerView({orders,onUpdateStatus,onUpdateItem}){
+  const[fSt,setFSt]=useState("all");
+  const[fCat,setFCat]=useState("all");
+  const[em,setEm]=useState(null);
+  const filtered=orders.filter(o=>(fSt==="all"||o.status===fSt)&&(fCat==="all"||o.cat===fCat));
+  const cnt={waiting:orders.filter(o=>o.status==="waiting").length,ordered:orders.filter(o=>o.status==="ordered").length,delivered:orders.filter(o=>o.status==="delivered").length};
+  return(<div>
+    <div style={{fontSize:22,fontWeight:700,marginBottom:2}}>발주 관리</div>
+    <div style={{fontSize:13,color:C.dim,marginBottom:20}}>상태 변경 및 링크 발주</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:20}}>
+      {[["waiting","대기중",C.gold],["ordered","발주중",C.blue],["delivered","배송완료",C.green]].map(([k,l,col])=>(
+        <div key={k} onClick={()=>setFSt(fSt===k?"all":k)} style={{background:fSt===k?"rgba(0,0,0,0.05)":C.surface,border:`1.5px solid ${fSt===k?col:C.border}`,borderRadius:14,padding:"14px 8px",textAlign:"center",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+          <div style={{fontSize:26,fontWeight:800,color:col}}>{cnt[k]}</div>
+          <div style={{fontSize:11,color:C.dim,marginTop:3,fontWeight:600}}>{l}</div>
+        </div>
+      ))}
+    </div>
+    <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:18,scrollbarWidth:"none"}}>
+      {[["all","전체",C.accent],["bev","🧊 음료",C.blue],["supply","📦 비품",C.gold],["equip","🔧 기물",C.orange]].map(([k,l,col])=><Pill key={k} label={l} active={fCat===k} color={col} onClick={()=>setFCat(k)}/>)}
+    </div>
+    {filtered.length===0?<div style={{textAlign:"center",padding:"60px 0",color:C.muted}}><div style={{fontSize:40,marginBottom:12}}>📭</div><div style={{fontSize:15}}>해당 항목이 없습니다.</div></div>:(
+      filtered.map(order=>{
+        const nUrl=order.naverUrl||`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(order.name)}`;
+        const cUrl=order.coupangUrl||`https://www.coupang.com/np/search?q=${encodeURIComponent(order.name)}`;
+        const st=STATUS[order.status];
+        return(<div key={order.orderId} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"16px",marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:5}}><span style={{fontWeight:700,fontSize:16}}>{order.name}</span><Tag status={order.status}/></div>
+              <div style={{fontSize:12,color:C.muted,lineHeight:1.8}}>{CAT[order.cat].label}{order.note?" · "+order.note:""}<br/>요청자: {order.requester} · {order.submittedAt}</div>
+            </div>
+            <button onClick={()=>setEm(order)} style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20,padding:"0 0 0 8px",flexShrink:0}}>✏️</button>
+          </div>
+          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <a href={nUrl} target="_blank" rel="noopener noreferrer" style={{padding:"9px 16px",borderRadius:9,fontSize:13,fontWeight:700,background:"rgba(3,199,90,0.12)",color:"#00a050",textDecoration:"none"}}>N 네이버</a>
+            <a href={cUrl} target="_blank" rel="noopener noreferrer" style={{padding:"9px 16px",borderRadius:9,fontSize:13,fontWeight:700,background:"rgba(225,46,27,0.1)",color:"#c0301a",textDecoration:"none"}}>C 쿠팡</a>
+            <div style={{flex:1}}/>
+            {st.next&&<button onClick={()=>onUpdateStatus(order.orderId,st.next)} style={{padding:"9px 18px",borderRadius:9,border:"none",background:C.accent,color:C.surface,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{st.nextLabel} →</button>}
+          </div>
+        </div>);
+      })
+    )}
+    {em&&<ItemModal item={em} onSave={(data)=>{onUpdateItem(em.orderId,data);setEm(null);}} onDelete={null} onClose={()=>setEm(null)}/>}
+  </div>);
+}
+function HistoryView({history}){
+  const[open,setOpen]=useState(null);
+  const cnt={all:history.length,ordered:history.filter(o=>o.status==="ordered"||o.status==="delivered").length,delivered:history.filter(o=>o.status==="delivered").length};
+  const groups=history.reduce((acc,o)=>{const k=o.submittedAt.split(". ").slice(0,3).join(".");if(!acc[k])acc[k]=[];acc[k].push(o);return acc;},{});
+  return(<div>
+    <div style={{fontSize:22,fontWeight:700,marginBottom:2}}>발주 이력</div>
+    <div style={{fontSize:13,color:C.dim,marginBottom:20}}>전체 발주 내역 및 통계</div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:24}}>
+      {[["전체",cnt.all,C.text],["발주",cnt.ordered,C.blue],["배송완료",cnt.delivered,C.green]].map(([l,v,col])=>(
+        <div key={l} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:"16px 8px",textAlign:"center"}}>
+          <div style={{fontSize:28,fontWeight:800,color:col}}>{v}</div>
+          <div style={{fontSize:11,color:C.muted,marginTop:4,fontWeight:600}}>{l}</div>
+        </div>
+      ))}
+    </div>
+    {history.length===0?<div style={{textAlign:"center",padding:"50px 0",color:C.muted}}><div style={{fontSize:40,marginBottom:12}}>📋</div><div style={{fontSize:15}}>발주 이력이 없습니다.</div></div>:(
+      Object.entries(groups).reverse().map(([date,items])=>(
+        <div key={date} style={{marginBottom:18}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.dim,letterSpacing:"0.06em",marginBottom:8}}>{date}</div>
+          {items.map(o=>(
+            <div key={o.orderId} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:9,overflow:"hidden"}}>
+              <div onClick={()=>setOpen(open===o.orderId?null:o.orderId)} style={{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                <span style={{fontSize:16}}>{CAT[o.cat].emoji}</span>
+                <span style={{flex:1,fontWeight:600,fontSize:15}}>{o.name}</span>
+                <Tag status={o.status}/>
+                <span style={{color:C.muted,fontSize:14,marginLeft:6}}>{open===o.orderId?"▲":"▼"}</span>
+              </div>
+              {open===o.orderId&&<div style={{padding:"0 16px 16px",borderTop:`1px solid ${C.border}`}}><div style={{fontSize:13,color:C.dim,lineHeight:2.3,marginTop:13}}><div>카테고리: {CAT[o.cat].label}</div><div>비고: {o.note||"없음"}</div><div>요청자: {o.requester}</div><div>일시: {o.submittedAt}</div></div></div>}
+            </div>
+          ))}
+        </div>
+      ))
+    )}
+  </div>);
+}
+function App(){
+  const[view,setView]=useState("home");
+  const[orders,setOrders]=useState([]);
+  const[history,setHistory]=useState([]);
+  const[seq,setSeq]=useState(1);
+  const submit=(picked,req)=>{const now=new Date().toLocaleString("ko-KR");const o=picked.map(item=>({...item,orderId:`ORD-${String(seq).padStart(4,"0")}-${item.id}`,requester:req,status:"waiting",submittedAt:now}));setOrders(p=>[...o,...p]);setHistory(p=>[...o,...p]);setSeq(n=>n+1);setView("manager");};
+  const upSt=(id,next)=>{setOrders(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));setHistory(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));};
+  const upItem=(id,data)=>{setOrders(p=>p.map(o=>o.orderId===id?{...o,...data}:o));setHistory(p=>p.map(o=>o.orderId===id?{...o,...data}:o));};
+  const wc=orders.filter(o=>o.status==="waiting").length;
+  return(<div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",WebkitFontSmoothing:"antialiased"}}>
+    {view!=="home"&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",background:C.surface,borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,zIndex:100}}>
+      <button onClick={()=>setView("home")} style={{background:"transparent",border:"none",color:C.gold,fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:"0.08em",padding:0,fontFamily:"inherit"}}>DOUGHROOM</button>
+      <div style={{display:"flex",gap:2,background:C.surface2,borderRadius:12,padding:4}}>
+        {[["staff","직원"],["manager","직급자"],["history","이력"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setView(k)} style={{padding:"8px 14px",borderRadius:9,fontSize:13,fontWeight:view===k?700:500,border:"none",background:view===k?C.accent:"transparent",color:view===k?C.surface:C.dim,cursor:"pointer",position:"relative",fontFamily:"inherit"}}>
+            {l}{k==="manager"&&wc>0&&<span style={{position:"absolute",top:2,right:2,background:C.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",lineHeight:1}}>{wc}</span>}
+          </button>
+        ))}
+      </div>
+    </div>}
+    <div style={{maxWidth:540,margin:"0 auto",padding:view==="home"?"0":"20px 18px 80px"}}>
+      {view==="home"&&<HomeView onEnter={setView} waitingCount={wc}/>}
+      {view==="staff"&&<StaffView items={ITEMS} onSubmit={submit}/>}
+      {view==="manager"&&<ManagerView orders={orders} onUpdateStatus={upSt} onUpdateItem={upItem}/>}
+      {view==="history"&&<HistoryView history={history}/>}
+    </div>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
