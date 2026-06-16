@@ -104,7 +104,7 @@ function HomeView({onEnter,waitingCount}){
     </div>
   </div>);
 }
-function StaffView({items:list,setItems:setList,onSubmit}){
+function StaffView({items:list,setItems:setList,orders,onSubmit}){
   const[checked,setChecked]=useState({});
   const[req,setReq]=useState("");
   const[fCat,setFCat]=useState("all");
@@ -129,8 +129,51 @@ function StaffView({items:list,setItems:setList,onSubmit}){
     <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:16,scrollbarWidth:"none"}}>
       {[["all","전체",C.accent],["bev","🧊 음료",C.blue],["supply","📦 비품",C.gold],["equip","🔧 기물",C.orange]].map(([k,l,col])=><Pill key={k} label={l} active={fCat===k} color={col} onClick={()=>setFCat(k)}/>)}
     </div>
-    {filtered.map(item=>(
-      <div key={item.id} onClick={()=>editMode?setModal(item):(setChecked(p=>({...p,[item.id]:!p[item.id]})))} style={{display:"flex",alignItems:"center",gap:13,background:!editMode&&checked[item.id]?C.dangerD:C.surface,border:`1px solid ${!editMode&&checked[item.id]?C.danger:C.border}`,borderRadius:14,padding:"15px 16px",marginBottom:9,cursor:"pointer",WebkitTapHighlightColor:"transparent",userSelect:"none"}}>
+    {filtered.map(item=>{
+  const activeOrder = orders.find(
+    o => o.id === item.id && o.status !== "delivered"
+  );
+
+  return (
+  <div
+    key={item.id}
+    onClick={()=>{
+      if(editMode){
+        setModal(item);
+        return;
+      }
+      if(activeOrder) return;
+      setChecked(p=>({...p,[item.id]:!p[item.id]}));
+    }}
+    style={{
+      display:"flex",
+      alignItems:"center",
+      gap:13,
+      background:activeOrder
+        ? activeOrder.status==="ordered"
+          ? "#EFEFEF"
+          : "#FFF5D8"
+        : !editMode&&checked[item.id]
+          ? C.dangerD
+          : C.surface,
+      border:`1px solid ${
+        activeOrder
+          ? activeOrder.status==="ordered"
+            ? "#D0D0D0"
+            : "#E2C46A"
+          : !editMode&&checked[item.id]
+            ? C.danger
+            : C.border
+      }`,
+      borderRadius:14,
+      padding:"15px 16px",
+      marginBottom:9,
+      cursor:activeOrder&&!editMode?"not-allowed":"pointer",
+      WebkitTapHighlightColor:"transparent",
+      userSelect:"none",
+      opacity:activeOrder&&!editMode?0.88:1
+    }}
+  >
         {editMode?<span style={{fontSize:18}}>✏️</span>:(
           <div style={{width:24,height:24,borderRadius:7,flexShrink:0,border:`1.5px solid ${checked[item.id]?C.danger:C.border2}`,background:checked[item.id]?C.danger:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
             {checked[item.id]&&<svg width="13" height="10" viewBox="0 0 13 10" fill="none"><path d="M1 5L5 9L12 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -138,13 +181,31 @@ function StaffView({items:list,setItems:setList,onSubmit}){
         )}
         <div style={{width:8,height:8,borderRadius:"50%",background:CAT[item.cat].color,flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:600,fontSize:15,color:!editMode&&checked[item.id]?C.danger:C.text}}>{item.name}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+  <span style={{fontWeight:600,fontSize:15,color:!editMode&&checked[item.id]?C.danger:C.text}}>
+    {item.name}
+  </span>
+  {!editMode && activeOrder && (
+    <span style={{
+      fontSize:11,
+      padding:"4px 10px",
+      borderRadius:20,
+      background:activeOrder.status==="ordered" ? "#DDE7EF" : "#F3EAD8",
+      color:activeOrder.status==="ordered" ? C.blue : C.gold,
+      fontWeight:700,
+      flexShrink:0
+    }}>
+      {activeOrder.status==="ordered" ? "발주중" : "대기중"}
+    </span>
+  )}
+</div>
           <div style={{fontSize:12,color:C.muted,marginTop:3}}>{CAT[item.cat].label}{item.note?" · "+item.note:""}</div>
         </div>
         {!editMode&&checked[item.id]&&<span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:C.dangerD,color:C.danger,fontWeight:700,flexShrink:0}}>부족</span>}
         {editMode&&<span style={{color:C.muted,fontSize:22}}>›</span>}
-      </div>
-    ))}
+    </div>
+  );
+})}
     <button onClick={()=>setModal("add")} style={{width:"100%",padding:15,borderRadius:14,border:`1.5px dashed ${C.border2}`,background:"transparent",color:C.muted,fontSize:15,cursor:"pointer",marginTop:6,fontFamily:"inherit"}}>+ 품목 추가</button>
     {!editMode&&<div style={{position:"fixed",bottom:0,left:0,right:0,padding:"16px 20px 32px",background:C.surface,borderTop:`1px solid ${C.border}`,zIndex:50}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",maxWidth:540,margin:"0 auto"}}>
@@ -281,7 +342,7 @@ function App(){
     </div>}
     <div style={{maxWidth:540,margin:"0 auto",padding:view==="home"?"0":"20px 18px 80px"}}>
       {view==="home"&&<HomeView onEnter={setView} waitingCount={wc}/>}
-      {view==="staff"&&<StaffView items={items} setItems={setItems} onSubmit={submit}/>}
+      {view==="staff"&&<StaffView items={items} setItems={setItems} orders={orders} onSubmit={submit}/>}
       {view==="manager"&&<ManagerView orders={orders} onUpdateStatus={upSt} onUpdateItem={upItem}/>}
       {view==="history"&&<HistoryView history={history}/>}
     </div>
