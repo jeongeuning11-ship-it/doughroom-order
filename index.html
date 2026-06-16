@@ -104,15 +104,16 @@ function HomeView({onEnter,waitingCount}){
     </div>
   </div>);
 }
-function StaffView({items:init,onSubmit}){
-  const[list,setList]=useState(init);
+function StaffView({items:list,setItems:setList,onSubmit}){
   const[checked,setChecked]=useState({});
   const[req,setReq]=useState("");
   const[fCat,setFCat]=useState("all");
   const[editMode,setEditMode]=useState(false);
   const[modal,setModal]=useState(null);
   const[kakao,setKakao]=useState(null);
-  const[nid,setNid]=useState(init.length+1);
+  const[nid,setNid]=useState(
+  list.length ? Math.max(...list.map(i=>i.id))+1 : 1
+);
   const cnt=Object.values(checked).filter(Boolean).length;
   const filtered=fCat==="all"?list:list.filter(i=>i.cat===fCat);
   const can=cnt>0&&req.trim().length>0;
@@ -256,10 +257,12 @@ function App(){
   const[orders,setOrders]=useState(()=>JSON.parse(localStorage.getItem("orders")||"[]"));
   const[history,setHistory]=useState(()=>JSON.parse(localStorage.getItem("history")||"[]"));
   const[seq,setSeq]=useState(()=>JSON.parse(localStorage.getItem("seq")||"1"));
+  const[items,setItems]=useState(()=>JSON.parse(localStorage.getItem("items")||JSON.stringify(ITEMS)));
 
   React.useEffect(()=>{localStorage.setItem("orders",JSON.stringify(orders));},[orders]);
   React.useEffect(()=>{localStorage.setItem("history",JSON.stringify(history));},[history]);
   React.useEffect(()=>{localStorage.setItem("seq",JSON.stringify(seq));},[seq]);
+  React.useEffect(()=>{localStorage.setItem("items",JSON.stringify(items));},[items]);
 
   const submit=(picked,req)=>{const now=new Date().toLocaleString("ko-KR");const o=picked.map(item=>({...item,orderId:`ORD-${String(seq).padStart(4,"0")}-${item.id}`,requester:req,status:"waiting",submittedAt:now}));setOrders(p=>[...o,...p]);setHistory(p=>[...o,...p]);setSeq(n=>n+1);setView("manager");};
   const upSt=(id,next)=>{setOrders(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));setHistory(p=>p.map(o=>o.orderId===id?{...o,status:next}:o));};
@@ -278,7 +281,7 @@ function App(){
     </div>}
     <div style={{maxWidth:540,margin:"0 auto",padding:view==="home"?"0":"20px 18px 80px"}}>
       {view==="home"&&<HomeView onEnter={setView} waitingCount={wc}/>}
-      {view==="staff"&&<StaffView items={ITEMS} onSubmit={submit}/>}
+      {view==="staff"&&<StaffView items={items} setItems={setItems} onSubmit={submit}/>}
       {view==="manager"&&<ManagerView orders={orders} onUpdateStatus={upSt} onUpdateItem={upItem}/>}
       {view==="history"&&<HistoryView history={history}/>}
     </div>
