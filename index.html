@@ -292,7 +292,7 @@ function ManagerView({orders,onUpdateStatus,onUpdateItem}){
         order.coupangUrl ||
         `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(order.name)}`;
 
-      window.open(buyUrl,"_blank");
+      window.location.href = buyUrl;
     }
 
     onUpdateStatus(order.orderId,st.next);
@@ -314,6 +314,7 @@ function ManagerView({orders,onUpdateStatus,onUpdateItem}){
           </div>
         </div>);
       })
+    )}
     {em&&<ItemModal item={em} onSave={(data)=>{onUpdateItem(em.orderId,data);setEm(null);}} onDelete={null} onClose={()=>setEm(null)}/>}
   </div>);
 }
