@@ -311,9 +311,9 @@ function ManagerView({orders,onUpdateStatus,onUpdateItem}){
 >
   {st.nextLabel} →
 </button>}
+          </div>
         </div>);
       })
-    )}
     {em&&<ItemModal item={em} onSave={(data)=>{onUpdateItem(em.orderId,data);setEm(null);}} onDelete={null} onClose={()=>setEm(null)}/>}
   </div>);
 }
