@@ -106,7 +106,6 @@ function HomeView({onEnter,waitingCount}){
 }
 function StaffView({items:list,setItems:setList,orders,onSubmit}){
   const[checked,setChecked]=useState({});
-  const[req,setReq]=useState("");
   const[search,setSearch]=useState("");
   const[fCat,setFCat]=useState("all");
   const[editMode,setEditMode]=useState(false);
@@ -116,15 +115,33 @@ function StaffView({items:list,setItems:setList,orders,onSubmit}){
   list.length ? Math.max(...list.map(i=>i.id))+1 : 1
 );
   const cnt=Object.values(checked).filter(Boolean).length;
-  const filtered=(fCat==="all"?list:list.filter(i=>i.cat===fCat))
-  .filter(i=>
-    i.name.includes(search.trim()) ||
-    i.note.includes(search.trim())
-  );
+  const itemText=(v)=>(v||"").toLowerCase();
+
+const filtered=(fCat==="all"?list:list.filter(i=>i.cat===fCat))
+  .filter(i=>{
+    const q=search.trim().toLowerCase();
+
+    if(!q) return true;
+
+    return (
+      itemText(i.name).includes(q) ||
+      itemText(i.note).includes(q)
+    );
+  });
   const can=cnt>0;
   const save=(data)=>{if(modal==="add"){setList(p=>[...p,{id:nid,...data}]);setNid(n=>n+1);}else{setList(p=>p.map(i=>i.id===modal.id?{...i,...data}:i));}};
   const del=(id)=>{setList(p=>p.filter(i=>i.id!==id));setChecked(p=>{const n={...p};delete n[id];return n;});};
-  const submit=()=>{if(!can)return;const picked=list.filter(i=>checked[i.id]);onSubmit(picked,"직원");setKakao(picked);setChecked({});};
+  const submit=()=>{
+  if(!can)return;
+
+  const picked=list.filter(i=>checked[i.id]);
+
+  onSubmit(picked,"직원");
+
+  setKakao(picked);
+
+  setChecked({});
+};
   return(<div style={{paddingBottom:110}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
       <div><div style={{fontSize:22,fontWeight:700}}>{editMode?"✏️ 품목 편집":"재고 체크"}</div><div style={{fontSize:13,color:C.dim,marginTop:3}}>{editMode?"탭해서 수정·삭제":"부족한 항목을 탭하세요"}</div></div>
@@ -136,7 +153,7 @@ function StaffView({items:list,setItems:setList,orders,onSubmit}){
     style={inp}
     value={search}
     onChange={e=>setSearch(e.target.value)}
-    placeholder="예: 콜라, 냅킨, 와인잔"
+    placeholder="예: 콜라, 냅킨, 와인"
   />
 </div>
     <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:16,scrollbarWidth:"none"}}>
