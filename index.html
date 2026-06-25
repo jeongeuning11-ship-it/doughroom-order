@@ -284,33 +284,32 @@ function ManagerView({orders,onUpdateStatus,onUpdateItem}){
             <a href={nUrl} target="_blank" rel="noopener noreferrer" style={{padding:"9px 16px",borderRadius:9,fontSize:13,fontWeight:700,background:"rgba(3,199,90,0.12)",color:"#00a050",textDecoration:"none"}}>N 네이버</a>
             <a href={cUrl} target="_blank" rel="noopener noreferrer" style={{padding:"9px 16px",borderRadius:9,fontSize:13,fontWeight:700,background:"rgba(225,46,27,0.1)",color:"#c0301a",textDecoration:"none"}}>C 쿠팡</a>
             <div style={{flex:1}}/>
-            {st.next&&<button
-  onClick={()=>{
-    if(order.status==="waiting"){
-      const buyUrl =
-        order.naverUrl ||
-        order.coupangUrl ||
-        `https://search.shopping.naver.com/search/all?query=${encodeURIComponent(order.name)}`;
-
-      window.location.href = buyUrl;
-    }
-
-    onUpdateStatus(order.orderId,st.next);
-  }}
-  style={{
-    padding:"9px 18px",
-    borderRadius:9,
-    border:"none",
-    background:C.accent,
-    color:C.surface,
-    fontSize:13,
-    fontWeight:700,
-    cursor:"pointer",
-    fontFamily:"inherit"
-  }}
->
-  {st.nextLabel} →
-</button>}
+            {st.next&&(
+  <a
+    href={order.naverUrl || "#"}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={()=>{
+      onUpdateStatus(order.orderId,st.next);
+    }}
+    style={{
+      padding:"9px 18px",
+      borderRadius:9,
+      background:C.accent,
+      color:C.surface,
+      fontSize:13,
+      fontWeight:700,
+      textDecoration:"none",
+      display:"inline-flex",
+      alignItems:"center",
+      justifyContent:"center",
+      cursor:"pointer",
+      fontFamily:"inherit"
+    }}
+  >
+    {st.nextLabel} →
+  </a>
+)}
           </div>
         </div>);
       })
