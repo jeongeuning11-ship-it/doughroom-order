@@ -107,6 +107,7 @@ function HomeView({onEnter,waitingCount}){
 function StaffView({items:list,setItems:setList,orders,onSubmit}){
   const[checked,setChecked]=useState({});
   const[req,setReq]=useState("");
+  const[search,setSearch]=useState("");
   const[fCat,setFCat]=useState("all");
   const[editMode,setEditMode]=useState(false);
   const[modal,setModal]=useState(null);
@@ -115,17 +116,29 @@ function StaffView({items:list,setItems:setList,orders,onSubmit}){
   list.length ? Math.max(...list.map(i=>i.id))+1 : 1
 );
   const cnt=Object.values(checked).filter(Boolean).length;
-  const filtered=fCat==="all"?list:list.filter(i=>i.cat===fCat);
-  const can=cnt>0&&req.trim().length>0;
+  const filtered=(fCat==="all"?list:list.filter(i=>i.cat===fCat))
+  .filter(i=>
+    i.name.includes(search.trim()) ||
+    i.note.includes(search.trim())
+  );
+  const can=cnt>0;
   const save=(data)=>{if(modal==="add"){setList(p=>[...p,{id:nid,...data}]);setNid(n=>n+1);}else{setList(p=>p.map(i=>i.id===modal.id?{...i,...data}:i));}};
   const del=(id)=>{setList(p=>p.filter(i=>i.id!==id));setChecked(p=>{const n={...p};delete n[id];return n;});};
-  const submit=()=>{if(!can)return;const picked=list.filter(i=>checked[i.id]);onSubmit(picked,req.trim());setKakao(picked);setChecked({});};
+  const submit=()=>{if(!can)return;const picked=list.filter(i=>checked[i.id]);onSubmit(picked,"직원");setKakao(picked);setChecked({});};
   return(<div style={{paddingBottom:110}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
       <div><div style={{fontSize:22,fontWeight:700}}>{editMode?"✏️ 품목 편집":"재고 체크"}</div><div style={{fontSize:13,color:C.dim,marginTop:3}}>{editMode?"탭해서 수정·삭제":"부족한 항목을 탭하세요"}</div></div>
       <button onClick={()=>setEditMode(e=>!e)} style={{padding:"9px 18px",borderRadius:10,border:`1px solid ${editMode?C.gold:C.border}`,background:editMode?"rgba(154,127,82,0.1)":"transparent",color:editMode?C.gold:C.dim,fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{editMode?"완료":"편집"}</button>
     </div>
-    {!editMode&&<div style={{marginBottom:18}}><div style={{fontSize:13,color:C.dim,fontWeight:600,marginBottom:7}}>요청자 이름</div><input style={inp} value={req} onChange={e=>setReq(e.target.value)} placeholder="이름을 입력하세요"/></div>}
+    {!editMode&&<div style={{marginBottom:18}}>
+  <div style={{fontSize:13,color:C.dim,fontWeight:600,marginBottom:7}}>품목 검색</div>
+  <input
+    style={inp}
+    value={search}
+    onChange={e=>setSearch(e.target.value)}
+    placeholder="예: 콜라, 냅킨, 와인잔"
+  />
+</div>
     <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:16,scrollbarWidth:"none"}}>
       {[["all","전체",C.accent],["bev","🧊 음료",C.blue],["supply","📦 비품",C.gold],["equip","🔧 기물",C.orange]].map(([k,l,col])=><Pill key={k} label={l} active={fCat===k} color={col} onClick={()=>setFCat(k)}/>)}
     </div>
