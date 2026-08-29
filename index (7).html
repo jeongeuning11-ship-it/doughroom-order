@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#F6F6F4"/>
+<title>doughroom gwanghwamun · 발주관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{background:#f6f6f4;color:#151515;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}button,input,select,textarea{font:inherit}button{cursor:pointer}input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}input[type=number]{-moz-appearance:textfield}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useCallback}=React;
+const SUPABASE_URL="https://foizknshfwkrlxvuovwk.supabase.co";
+const SUPABASE_KEY="sb_publishable_ppUtMBp60LBFuRjOQR6SLA_Kf_Swu7-";
+const db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const C={bg:"#F6F6F4",surface:"#FFFFFF",surface2:"#EEEEEC",line:"#D8D8D4",line2:"#C7C7C2",ink:"#151515",dim:"#666662",muted:"#999995",soft:"#F2F2F0",green:"#4F6655",red:"#9C4848",blue:"#596675"};
+const CAT={bev:"음료·식자재",supply:"비품·소모품",equip:"기물·집기"};
+const METHOD={internet:"인터넷발주",kitchen:"주방발주",direct:"직접발주",none:"미분류"};
+const STATUS={waiting:"대기중",ordered:"발주중",delivered:"배송완료"};
+const card={background:C.surface,border:`1px solid ${C.line}`,borderRadius:16};
+const inp={width:"100%",padding:"13px 14px",background:C.surface,border:`1px solid ${C.line}`,borderRadius:11,color:C.ink,fontSize:16,outline:"none"};
+const money=v=>Number(v||0)?`${Number(v).toLocaleString("ko-KR")}원`:"-";
+const fmt=iso=>iso?new Date(iso).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+const monthKey=iso=>{const d=new Date(iso);return `${d.getFullYear()}. ${d.getMonth()+1}.`;};
+
+function Modal({onClose,children}){return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.42)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}}><div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:560,background:C.surface,borderRadius:"22px 22px 0 0",padding:"22px 20px 36px",maxHeight:"90vh",overflowY:"auto"}}>{children}</div></div>}
+function Pill({label,active,onClick}){return <button onClick={onClick} style={{padding:"8px 14px",borderRadius:999,border:`1px solid ${active?C.ink:C.line}`,background:active?C.ink:C.surface,color:active?"#fff":C.dim,fontSize:13,fontWeight:800,whiteSpace:"nowrap"}}>{label}</button>}
+function Tag({status}){return <span style={{fontSize:11,fontWeight:800,padding:"4px 8px",borderRadius:999,background:C.soft,color:status==="ordered"?C.blue:status==="delivered"?C.green:C.dim}}>{STATUS[status]}</span>}
+function Toast({text}){return text?<div style={{position:"fixed",left:"50%",bottom:92,transform:"translateX(-50%)",background:C.ink,color:"#fff",padding:"11px 15px",borderRadius:12,zIndex:500,fontSize:13,fontWeight:800,whiteSpace:"nowrap"}}>{text}</div>:null}
+
+function ItemModal({item,onSave,onDelete,onClose}){
+ const [name,setName]=useState(item?.name||"");
+ const [cat,setCat]=useState(item?.cat||"bev");
+ const [method,setMethod]=useState(item?.orderMethod||"none");
+ const [unit,setUnit]=useState(item?.unit||"개");
+ const [pack,setPack]=useState(item?.packSize||1);
+ const [price,setPrice]=useState(item?.price||0);
+ const [url,setUrl]=useState(item?.purchaseUrl||"");
+ const [note,setNote]=useState(item?.note||"");
+ const [fav,setFav]=useState(!!item?.favorite);
+ const L=t=><div style={{fontSize:12,color:C.dim,fontWeight:800,marginBottom:6}}>{t}</div>;
+ return <Modal onClose={onClose}>
+  <div style={{fontSize:20,fontWeight:900,marginBottom:20}}>{item?"품목 수정":"품목 추가"}</div>
+  <div style={{marginBottom:14}}>{L("품목명")}<input style={inp} value={name} onChange={e=>setName(e.target.value)}/></div>
+  <div style={{marginBottom:14}}>{L("발주방법")}<select style={{...inp,appearance:"none"}} value={method} onChange={e=>setMethod(e.target.value)}><option value="none">미분류</option><option value="internet">인터넷발주</option><option value="kitchen">주방발주</option><option value="direct">직접발주</option></select></div>
+  <div style={{marginBottom:14}}>{L("카테고리")}<select style={{...inp,appearance:"none"}} value={cat} onChange={e=>setCat(e.target.value)}><option value="bev">음료·식자재</option><option value="supply">비품·소모품</option><option value="equip">기물·집기</option></select></div>
+  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div>{L("단위")}<select style={{...inp,appearance:"none"}} value={unit} onChange={e=>setUnit(e.target.value)}><option value="개">개</option><option value="병">병</option><option value="박스">박스</option><option value="묶음">묶음</option><option value="봉">봉</option><option value="통">통</option><option value="롤">롤</option><option value="팩">팩</option><option value="세트">세트</option></select></div><div>{L("묶음수량")}<input style={inp} type="number" min="1" value={pack} onChange={e=>setPack(e.target.value)}/></div></div>
+  <div style={{fontSize:12,color:C.muted,marginTop:-5,marginBottom:14}}>1회 발주 = {Math.max(1,Number(pack)||1)}{unit||"개"}</div>
+  <div style={{marginBottom:14}}>{L("묶음 단가")}<input style={inp} type="number" min="0" value={price} onChange={e=>setPrice(e.target.value)}/></div>
+  {method==="internet"&&<div style={{marginBottom:14}}>{L("구매 링크")}<input style={inp} value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://..."/></div>}
+  <div style={{marginBottom:14}}>{L("비고")}<input style={inp} value={note} onChange={e=>setNote(e.target.value)}/></div>
+  <button onClick={()=>setFav(v=>!v)} style={{width:"100%",padding:12,borderRadius:11,border:`1px solid ${C.line}`,background:fav?C.soft:C.surface,color:C.ink,fontWeight:800,marginBottom:14}}>{fav?"★ 즐겨찾기":"☆ 즐겨찾기"}</button>
+  {item&&<button onClick={async()=>{if(confirm(`\"${item.name}\" 품목을 삭제할까요?`)){await onDelete(item.id);onClose();}}} style={{width:"100%",padding:12,borderRadius:11,border:`1px solid ${C.red}`,background:C.surface,color:C.red,fontWeight:800,marginBottom:10}}>품목 삭제</button>}
+  <div style={{display:"flex",gap:10}}><button onClick={onClose} style={{flex:1,padding:14,borderRadius:12,border:`1px solid ${C.line}`,background:C.surface}}>취소</button><button onClick={async()=>{if(!name.trim())return;await onSave(item?.id||null,{name:name.trim(),cat,orderMethod:method,unit:unit||"개",packSize:Math.max(1,Number(pack)||1),price:Math.max(0,Number(price)||0),purchaseUrl:method==="internet"?url.trim():"",note:note.trim(),favorite:fav,sortOrder:item?.sortOrder});onClose();}} style={{flex:2,padding:14,borderRadius:12,border:"none",background:C.ink,color:"#fff",fontWeight:900}}>저장</button></div>
+ </Modal>
+}
+
+function Home({setView,orders,sync}){const waiting=orders.filter(o=>o.status==="waiting").length;const ordered=orders.filter(o=>o.status==="ordered").length;return <div style={{minHeight:"92vh",padding:"72px 24px 34px",display:"flex",flexDirection:"column",alignItems:"center"}}><div style={{textAlign:"center",marginBottom:42}}><div style={{fontSize:29,fontWeight:700,letterSpacing:"-.035em"}}>doughroom gwanghwamun</div><div style={{fontSize:13,color:C.dim,marginTop:8}}>발주 관리</div></div><div style={{width:"100%",maxWidth:390,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div style={{...card,padding:16}}><div style={{fontSize:11,color:C.muted,fontWeight:800}}>대기중</div><div style={{fontSize:28,fontWeight:900,marginTop:4}}>{waiting}</div></div><div style={{...card,padding:16}}><div style={{fontSize:11,color:C.muted,fontWeight:800}}>발주중</div><div style={{fontSize:28,fontWeight:900,marginTop:4}}>{ordered}</div></div></div><div style={{width:"100%",maxWidth:390,display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setView("staff")} style={{padding:20,borderRadius:15,border:"none",background:C.ink,color:"#fff",fontWeight:900,fontSize:16}}>발주 요청</button><button onClick={()=>setView("manager")} style={{padding:18,borderRadius:15,border:`1px solid ${C.line}`,background:C.surface,fontWeight:900,fontSize:16}}>발주 관리</button><button onClick={()=>setView("history")} style={{padding:18,borderRadius:15,border:`1px solid ${C.line}`,background:C.surface,color:C.dim,fontWeight:800,fontSize:15}}>발주 이력</button></div><div style={{marginTop:18,fontSize:11,color:C.muted}}>{sync}</div></div>}
+
+function Staff({items,orders,onSubmit,onSaveItem,onDeleteItem,onReorderItems}){
+ const [method,setMethod]=useState("all"); const [q,setQ]=useState(""); const [qty,setQty]=useState({}); const [edit,setEdit]=useState(false); const [modal,setModal]=useState(null); const [dragId,setDragId]=useState(null); const [draftOrder,setDraftOrder]=useState([]); const [reorderDirty,setReorderDirty]=useState(false); const [savingOrder,setSavingOrder]=useState(false); const [dragMeta,setDragMeta]=useState(null); const dragRef=React.useRef([]); const dragMetaRef=React.useRef(null); const dragTargetYRef=React.useRef(null); const dragAnimRef=React.useRef(null);
+ const activeIds=useMemo(()=>new Set(orders.filter(o=>o.status!=="delivered").map(o=>o.itemId)),[orders]);
+ const baseFiltered=useMemo(()=>items.filter(i=>(method==="all"||i.orderMethod===method)&&(!q.trim()||`${i.name} ${i.note}`.toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>{const aa=activeIds.has(a.id)?1:0,bb=activeIds.has(b.id)?1:0;if(!edit&&aa!==bb)return bb-aa;const so=(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0);if(so)return so;const fav=Number(b.favorite)-Number(a.favorite);if(fav)return fav;return a.name.localeCompare(b.name,"ko")}),[items,method,q,activeIds,edit]);
+ useEffect(()=>{if(!edit&&!dragId){const ids=baseFiltered.map(i=>i.id);setDraftOrder(ids);dragRef.current=ids;}},[baseFiltered,edit,dragId]);
+ const displayed=useMemo(()=>{if(!edit)return baseFiltered;const byId=new Map(baseFiltered.map(i=>[i.id,i]));return draftOrder.map(id=>byId.get(id)).filter(Boolean);},[edit,baseFiltered,draftOrder]);
+ const picked=items.filter(i=>(qty[i.id]||0)>0).map(i=>({...i,orderSteps:qty[i.id]}));
+ const ch=(id,d)=>{if(activeIds.has(id))return;setQty(p=>({...p,[id]:Math.max(0,(p[id]||0)+d)}));};
+ const setDirectQty=(id,value)=>{if(activeIds.has(id))return;const n=Math.max(0,parseInt(value||0,10)||0);setQty(p=>({...p,[id]:n}));};
+ const startEdit=()=>{
+   const ids=[...items]
+     .filter(i=>(method==="all"||i.orderMethod===method)&&(!q.trim()||`${i.name} ${i.note}`.toLowerCase().includes(q.toLowerCase())))
+     .sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)||a.id-b.id)
+     .map(i=>i.id);
+   dragRef.current=ids;
+   setDraftOrder(ids);
+   setReorderDirty(false);
+   setEdit(true);
+ };
+ const finishEdit=async()=>{
+   if(savingOrder)return;
+   if(reorderDirty){
+     setSavingOrder(true);
+     const ok=await onReorderItems([...dragRef.current]);
+     setSavingOrder(false);
+     if(!ok)return;
+   }
+   setReorderDirty(false);
+   setEdit(false);
+ };
+ const moveDraft=(fromId,toId)=>{if(!toId||fromId===toId)return;const arr=[...dragRef.current];const from=arr.indexOf(fromId),to=arr.indexOf(toId);if(from<0||to<0)return;arr.splice(from,1);arr.splice(to,0,fromId);dragRef.current=arr;setDraftOrder(arr);};
+ const dragStart=(e,id)=>{
+   e.stopPropagation();
+   const row=e.currentTarget.closest("[data-reorder-id]");
+   if(!row)return;
+   const r=row.getBoundingClientRect();
+   const meta={id,left:r.left,width:r.width,height:r.height,offsetY:e.clientY-r.top,top:r.top};
+   dragMetaRef.current=meta;
+   dragTargetYRef.current=r.top;
+   setDragMeta(meta);
+   setDragId(id);
+   const ids=displayed.map(x=>x.id);
+   dragRef.current=ids;
+   setDraftOrder(ids);
+   try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}
+ };
+ const animateDrag=()=>{
+   if(!dragMetaRef.current||dragTargetYRef.current==null){dragAnimRef.current=null;return;}
+   const cur=dragMetaRef.current.top;
+   const target=dragTargetYRef.current;
+   const next=cur+(target-cur)*0.34;
+   const meta={...dragMetaRef.current,top:Math.abs(target-next)<0.5?target:next};
+   dragMetaRef.current=meta;
+   setDragMeta(meta);
+   if(Math.abs(target-meta.top)>0.5) dragAnimRef.current=requestAnimationFrame(animateDrag); else dragAnimRef.current=null;
+ };
+ const dragMove=(e,id)=>{
+   if(dragId!==id||!dragMetaRef.current)return;
+   e.preventDefault();
+   const y=e.clientY;
+   dragTargetYRef.current=y-dragMetaRef.current.offsetY;
+   if(!dragAnimRef.current) dragAnimRef.current=requestAnimationFrame(animateDrag);
+   const rows=[...document.querySelectorAll("[data-reorder-id]")].filter(el=>Number(el.dataset.reorderId)!==id);
+   let targetIndex=rows.length;
+   for(let idx=0;idx<rows.length;idx++){
+     const r=rows[idx].getBoundingClientRect();
+     if(y<r.top+r.height/2){targetIndex=idx;break;}
+   }
+   const arr=dragRef.current.filter(x=>x!==id);
+   const next=[...arr];
+   next.splice(Math.max(0,Math.min(targetIndex,next.length)),0,id);
+   if(next.join(",")!==dragRef.current.join(",")){
+     dragRef.current=next;
+     setDraftOrder(next);
+     setReorderDirty(true);
+   }
+   const edge=82, speed=14;
+   if(y>window.innerHeight-edge) window.scrollBy(0,speed);
+   else if(y<edge) window.scrollBy(0,-speed);
+ };
+ const dragEnd=async(e,id)=>{
+   if(dragId!==id)return;
+   e.stopPropagation();
+   try{e.currentTarget.releasePointerCapture(e.pointerId)}catch(_){}
+   if(dragAnimRef.current){cancelAnimationFrame(dragAnimRef.current);dragAnimRef.current=null;}
+   setDragId(null);
+   setDragMeta(null);
+   dragMetaRef.current=null;
+   dragTargetYRef.current=null;
+ };
+ return <div style={{paddingBottom:116}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><div><div style={{fontSize:22,fontWeight:900}}>{edit?"품목 편집":"발주 요청"}</div><div style={{fontSize:13,color:C.dim,marginTop:3}}>{edit?"≡ 손잡이로 원하는 순서까지 옮긴 뒤 위의 완료를 누르면 한 번에 저장됩니다.":"발주된 품목은 맨 위에 고정되고, 발주방법별로 확인합니다."}</div></div><button disabled={savingOrder} onClick={edit?finishEdit:startEdit} style={{padding:"9px 14px",borderRadius:10,border:`1px solid ${C.line}`,background:edit?C.ink:C.surface,color:edit?"#fff":C.dim,fontWeight:800,opacity:savingOrder?.6:1}}>{savingOrder?"저장 중…":edit?"완료":"편집"}</button></div>
+ {!edit&&<input style={{...inp,marginBottom:14}} value={q} onChange={e=>setQ(e.target.value)} placeholder="품목 검색"/>}
+ <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:10}}>{[["all","전체"],["internet","인터넷발주"],["kitchen","주방발주"],["direct","직접발주"],["none","미분류"]].map(([k,l])=><Pill key={k} label={l} active={method===k} onClick={()=>setMethod(k)}/>)}</div>
+ {displayed.map(i=>{const s=qty[i.id]||0;const active=activeIds.has(i.id);const dragging=dragId===i.id;return <div key={i.id} data-reorder-id={i.id} style={{height:dragging&&dragMeta?dragMeta.height:"auto",marginBottom:9}}><div onClick={()=>{if(edit){setModal(i);return;}if(!active)ch(i.id,1);}} style={{...card,padding:15,marginBottom:0,background:s?C.soft:C.surface,border:`1px solid ${dragging?C.ink:s?C.ink:C.line}`,opacity:active&&!edit?.58:1,cursor:active&&!edit?"not-allowed":dragging?"grabbing":"pointer",position:dragging?"fixed":"relative",left:dragging&&dragMeta?dragMeta.left:undefined,top:dragging&&dragMeta?dragMeta.top:undefined,width:dragging&&dragMeta?dragMeta.width:undefined,zIndex:dragging?9999:"auto",boxShadow:dragging?"0 10px 24px rgba(0,0,0,.16)":"none",transform:dragging?"scale(1.006)":"none",transition:dragging?"box-shadow .18s ease, transform .18s ease":"border .15s, opacity .15s"}}><div style={{display:"flex",alignItems:"center",gap:12}}><button onClick={e=>{e.stopPropagation();onSaveItem(i.id,{...i,favorite:!i.favorite});}} style={{width:34,height:34,borderRadius:10,border:`1px solid ${C.line}`,background:C.surface,fontSize:18}}>{i.favorite?"★":"☆"}</button><div style={{flex:1,minWidth:0}}><div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}><span style={{fontSize:15,fontWeight:900}}>{i.name}</span>{active&&<Tag status={(orders.find(o=>o.itemId===i.id&&o.status!=="delivered")||{}).status}/>}</div><div style={{fontSize:12,color:C.muted,marginTop:4}}>{METHOD[i.orderMethod]||"미분류"} · {CAT[i.cat]||i.cat} · 1회 {i.packSize}{i.unit}{i.price?` · ${money(i.price)}`:""}</div>{i.note&&<div style={{fontSize:12,color:C.dim,marginTop:3}}>{i.note}</div>}</div>{edit?<div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20,color:C.muted}}>›</span><button aria-label="순서 변경" onPointerDown={e=>dragStart(e,i.id)} onPointerMove={e=>dragMove(e,i.id)} onPointerUp={e=>dragEnd(e,i.id)} onPointerCancel={e=>dragEnd(e,i.id)} style={{width:42,height:42,borderRadius:11,border:`1px solid ${C.line}`,background:C.surface,color:C.dim,fontSize:25,lineHeight:1,fontWeight:700,touchAction:"none",cursor:dragging?"grabbing":"grab",display:"flex",alignItems:"center",justifyContent:"center",letterSpacing:"-5px",paddingRight:5}}>≡</button></div>:<div onClick={e=>e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:6}}><button disabled={active||s===0} onClick={()=>ch(i.id,-1)} style={{width:34,height:34,borderRadius:10,border:`1px solid ${C.line}`,background:C.surface}}>−</button><div style={{width:72,textAlign:"center"}}><input type="number" min="0" value={s} onChange={e=>setDirectQty(i.id,e.target.value)} onClick={e=>e.stopPropagation()} disabled={active} style={{width:"100%",height:34,border:`1px solid ${C.line}`,borderRadius:9,background:C.surface,textAlign:"center",fontWeight:900,color:C.ink,outline:"none"}}/><div style={{fontSize:10,color:C.muted,marginTop:3}}>{s?`${s*i.packSize}${i.unit}`:"발주 횟수"}</div></div><button disabled={active} onClick={()=>ch(i.id,1)} style={{width:34,height:34,borderRadius:10,border:"none",background:active?C.line2:C.ink,color:"#fff"}}>＋</button></div>}</div></div></div>})}
+ {edit&&<button onClick={()=>setModal("add")} style={{width:"100%",padding:15,borderRadius:14,border:`1.5px dashed ${C.line2}`,background:"transparent",color:C.dim,fontWeight:800}}>+ 품목 추가</button>}
+ {!edit&&<div style={{position:"fixed",bottom:0,left:0,right:0,padding:"13px 18px 28px",background:"rgba(255,255,255,.97)",borderTop:`1px solid ${C.line}`,zIndex:50}}><div style={{maxWidth:560,margin:"0 auto",display:"flex",alignItems:"center",gap:12}}><div style={{flex:1}}><div><span style={{fontSize:22,fontWeight:900}}>{picked.length}</span><span style={{fontSize:12,color:C.dim}}> 품목</span></div></div><button disabled={!picked.length} onClick={async()=>{const ok=await onSubmit(picked);if(ok)setQty({});}} style={{padding:"14px 22px",borderRadius:13,border:"none",background:picked.length?C.ink:C.line2,color:"#fff",fontWeight:900}}>발주 요청 제출</button></div></div>}
+ {modal&&<ItemModal item={modal==="add"?null:modal} onSave={onSaveItem} onDelete={onDeleteItem} onClose={()=>setModal(null)}/>}</div>
+}
+
+const openKakao=()=>{ try{ window.location.href="kakaotalk://"; }catch(e){ console.warn(e); } };
+
+function MethodSection({method,orders,onStatus}){if(!orders.length)return null;return <div style={{marginBottom:22}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}><div style={{fontSize:15,fontWeight:900}}>{METHOD[method]}</div><div style={{fontSize:12,color:C.muted}}>{orders.length}건</div></div>{orders.map(o=><div key={o.orderId} style={{...card,padding:16,marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",gap:10}}><div style={{flex:1}}><div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><span style={{fontWeight:900}}>{o.name}</span><Tag status={o.status}/></div><div style={{fontSize:13,color:C.dim,marginTop:6}}>{o.displayQty}{o.unit} · {o.orderSteps}회{o.price?` · ${money(o.price*o.orderSteps)}`:""}</div><div style={{fontSize:11,color:C.muted,marginTop:5}}>{CAT[o.cat]} · {fmt(o.submittedAt)}</div></div></div>{o.status!=="delivered"&&<div style={{display:"flex",gap:8,marginTop:14}}>{o.status==="waiting"&&method==="internet"&&<button onClick={()=>onStatus(o,"ordered")} style={{flex:1,padding:12,borderRadius:11,border:"none",background:C.ink,color:"#fff",fontWeight:900}}>발주하기 · 링크 열기 →</button>}{o.status==="waiting"&&(method==="kitchen"||method==="direct")&&<button onClick={()=>onStatus(o,"ordered")} style={{flex:1,padding:12,borderRadius:11,border:"none",background:C.ink,color:"#fff",fontWeight:900}}>카톡 열기 →</button>}{o.status==="waiting"&&method==="none"&&<button onClick={()=>onStatus(o,"ordered")} style={{flex:1,padding:12,borderRadius:11,border:"none",background:C.ink,color:"#fff",fontWeight:900}}>발주중 처리</button>}{o.status==="ordered"&&<button onClick={()=>onStatus(o,"delivered")} style={{flex:1,padding:12,borderRadius:11,border:"none",background:C.green,color:"#fff",fontWeight:900}}>배송완료</button>}</div>}</div>)}</div>}
+
+function Manager({orders,onUpdateStatus}){const [status,setStatus]=useState("active");const current=orders.filter(o=>status==="all"?true:status==="active"?o.status!=="delivered":o.status===status);const by=m=>current.filter(o=>(o.orderMethod||"none")===m);const act=async(o,next)=>{if(next==="ordered"&&o.orderMethod==="internet"){const url=o.purchaseUrl||`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(o.name)}`;window.open(url,"_blank","noopener,noreferrer");}if(next==="ordered"&&(o.orderMethod==="kitchen"||o.orderMethod==="direct")){openKakao();}await onUpdateStatus(o,next);};return <div><div style={{fontSize:22,fontWeight:900,marginBottom:3}}>발주 관리</div><div style={{fontSize:13,color:C.dim,marginBottom:16}}>인터넷발주는 구매 링크, 주방·직접발주는 카카오톡을 열면서 바로 발주중으로 변경됩니다.</div><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:6,marginBottom:18}}>{[["active","진행중"],["waiting","대기중"],["ordered","발주중"],["delivered","완료"],["all","전체"]].map(([k,l])=><Pill key={k} label={l} active={status===k} onClick={()=>setStatus(k)}/>)}</div><MethodSection method="internet" orders={by("internet")} onStatus={act}/><MethodSection method="kitchen" orders={by("kitchen")} onStatus={act}/><MethodSection method="direct" orders={by("direct")} onStatus={act}/><MethodSection method="none" orders={by("none")} onStatus={act}/>{!current.length&&<div style={{textAlign:"center",padding:"60px 0",color:C.muted}}>해당 발주가 없습니다.</div>}</div>}
+
+function History({orders}){const done=orders.filter(o=>o.status==="delivered").sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt));const groups=done.reduce((a,o)=>{const k=monthKey(o.updatedAt||o.submittedAt);(a[k]||=[]).push(o);return a;},{});return <div><div style={{fontSize:22,fontWeight:900,marginBottom:3}}>발주 이력</div><div style={{fontSize:13,color:C.dim,marginBottom:18}}>배송완료된 품목을 월별로 확인합니다.</div>{Object.entries(groups).map(([m,list])=><div key={m} style={{marginBottom:20}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><div style={{fontWeight:900}}>{m}</div><div style={{fontSize:12,color:C.muted}}>{list.length}건 · {money(list.reduce((s,o)=>s+o.price*o.orderSteps,0))}</div></div><div style={{...card,overflow:"hidden"}}>{list.map((o,idx)=><div key={o.orderId} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,padding:14,borderTop:idx?`1px solid ${C.line}`:"none"}}><div><div style={{fontWeight:850}}>{o.name}</div><div style={{fontSize:11,color:C.muted,marginTop:4}}>{METHOD[o.orderMethod]||"미분류"} · {fmt(o.updatedAt||o.submittedAt)}</div></div><div style={{textAlign:"right"}}><div style={{fontWeight:900}}>{o.displayQty}{o.unit}</div><div style={{fontSize:11,color:C.muted,marginTop:4}}>{o.price?money(o.price*o.orderSteps):"-"}</div></div></div>)}</div></div>)}{!done.length&&<div style={{textAlign:"center",padding:"60px 0",color:C.muted}}>완료된 발주가 없습니다.</div>}</div>}
+
+function App(){
+ const [view,setView]=useState("home"),[items,setItems]=useState([]),[orders,setOrders]=useState([]),[loading,setLoading]=useState(true),[sync,setSync]=useState("공용 DB 연결 중..."),[toast,setToast]=useState(""); const reorderSavingRef=React.useRef(false);
+ const say=t=>{setToast(t);setTimeout(()=>setToast(""),2200)};
+ const mapItem=r=>({id:r.id,name:r.name,cat:r.cat||"bev",note:r.note||"",unit:r.unit||"개",packSize:Number(r.pack_size||1),price:Number(r.price||0),purchaseUrl:r.purchase_url||"",favorite:!!r.favorite,orderMethod:r.order_method||((r.purchase_url||"")?"internet":"none"),sortOrder:Number(r.sort_order??r.id??0)});
+ const mapOrder=r=>({id:r.id,orderId:r.order_code,itemId:r.item_id,name:r.name,cat:r.cat||"bev",note:r.note||"",unit:r.unit||"개",packSize:Number(r.pack_size||1),orderSteps:Number(r.order_steps||1),displayQty:Number(r.display_qty||1),price:Number(r.price||0),purchaseUrl:r.purchase_url||"",requester:r.requester||"직원",status:r.status,orderMethod:r.order_method||((r.purchase_url||"")?"internet":"none"),submittedAt:r.submitted_at,updatedAt:r.updated_at});
+ const load=useCallback(async(silent=false)=>{if(silent&&reorderSavingRef.current)return;if(!silent)setLoading(true);const [{data:i,error:ie},{data:o,error:oe}]=await Promise.all([db.from("items").select("*").order("favorite",{ascending:false}).order("name",{ascending:true}),db.from("orders").select("*").order("submitted_at",{ascending:false})]);if(ie||oe){console.error(ie||oe);setSync("공용 DB 연결 실패");if(!silent)setLoading(false);return;}setItems((i||[]).map(mapItem));setOrders((o||[]).map(mapOrder));setSync("공용 DB 연결됨");if(!silent)setLoading(false);},[]);
+ useEffect(()=>{load();const t=setInterval(()=>load(true),6000);const f=()=>load(true);window.addEventListener("focus",f);return()=>{clearInterval(t);window.removeEventListener("focus",f)}},[load]);
+ const saveItem=async(id,d)=>{const existing=id?items.find(x=>x.id===id):null;const nextOrder=items.length?Math.max(...items.map(x=>Number(x.sortOrder)||0))+10:10;const p={name:d.name,cat:d.cat,note:d.note||"",unit:d.unit||"개",pack_size:d.packSize||1,price:d.price||0,purchase_url:d.purchaseUrl||"",favorite:!!d.favorite,order_method:d.orderMethod==="none"?null:d.orderMethod,sort_order:Number(d.sortOrder??existing?.sortOrder??nextOrder)};const r=id?await db.from("items").update(p).eq("id",id):await db.from("items").insert(p);if(r.error){console.error(r.error);say("품목 저장 실패");return false;}await load(true);say("품목 저장 완료");return true};
+ const reorderItems=async(orderedIds)=>{if(!orderedIds?.length)return true;reorderSavingRef.current=true;const selected=new Set(orderedIds);const global=[...items].sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)||a.id-b.id);let j=0;const merged=global.map(x=>selected.has(x.id)?items.find(v=>v.id===orderedIds[j++]):x).filter(Boolean);const optimistic=merged.map((x,idx)=>({...x,sortOrder:(idx+1)*10}));setItems(optimistic);const rs=await Promise.all(merged.map((x,idx)=>db.from("items").update({sort_order:(idx+1)*10}).eq("id",x.id)));const err=rs.find(r=>r.error)?.error;reorderSavingRef.current=false;if(err){console.error(err);say("순서 저장 실패");await load(true);return false;}return true};
+ const deleteItem=async id=>{const {error}=await db.from("items").delete().eq("id",id);if(error){say("삭제 실패");return false}await load(true);say("삭제 완료");return true};
+ const submit=async picked=>{const stamp=Date.now();const rows=picked.map((i,n)=>({order_code:`ORD-${stamp}-${n+1}-${i.id}`,item_id:i.id,name:i.name,cat:i.cat,note:i.note||"",unit:i.unit||"개",pack_size:i.packSize||1,order_steps:i.orderSteps||1,display_qty:(i.packSize||1)*(i.orderSteps||1),price:i.price||0,requester:"직원",status:"waiting",purchase_url:i.purchaseUrl||"",order_method:i.orderMethod==="none"?null:i.orderMethod}));const {error}=await db.from("orders").insert(rows);if(error){console.error(error);say("발주 요청 저장 실패");return false}await load(true);say("발주 요청 완료");return true};
+ const updateStatus=async(o,next)=>{const {error}=await db.from("orders").update({status:next}).eq("order_code",o.orderId);if(error){console.error(error);say("상태 변경 실패");return false}await load(true);say(next==="ordered"?"발주중으로 변경했습니다.":"배송완료 처리했습니다.");return true};
+ return <div style={{minHeight:"100vh",background:C.bg}}>{view!=="home"&&<div style={{position:"sticky",top:0,zIndex:100,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",background:"rgba(255,255,255,.96)",borderBottom:`1px solid ${C.line}`}}><button onClick={()=>setView("home")} style={{border:"none",background:"transparent",fontWeight:900}}>doughroom gwanghwamun</button><div style={{display:"flex",gap:3,background:C.soft,padding:3,borderRadius:11}}>{[["staff","발주"],["manager","관리"],["history","이력"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} style={{padding:"8px 12px",borderRadius:8,border:"none",background:view===k?C.ink:"transparent",color:view===k?"#fff":C.dim,fontSize:12,fontWeight:900}}>{l}</button>)}</div></div>}<div style={{maxWidth:560,margin:"0 auto",padding:view==="home"?0:"20px 16px 80px"}}>{loading&&view!=="home"?<div style={{padding:60,textAlign:"center",color:C.muted}}>공용 데이터 불러오는 중...</div>:<>{view==="home"&&<Home setView={setView} orders={orders} sync={sync}/>} {view==="staff"&&<Staff items={items} orders={orders} onSubmit={submit} onSaveItem={saveItem} onDeleteItem={deleteItem} onReorderItems={reorderItems}/>} {view==="manager"&&<Manager orders={orders} onUpdateStatus={updateStatus}/>} {view==="history"&&<History orders={orders}/>}</>}</div><Toast text={toast}/></div>
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
